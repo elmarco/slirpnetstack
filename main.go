@@ -19,6 +19,7 @@ import (
 var (
 	fd             int
 	pcapFile       string
+	printCaps      bool
 	netNsPath      string
 	ifName         string
 	remoteFwd      FwdAddrSlice
@@ -32,6 +33,7 @@ var (
 func init() {
 	flag.IntVar(&fd, "fd", -1, "Unix datagram socket file descriptor")
 	flag.StringVar(&pcapFile, "pcap", "", "path to PCAP file")
+	flag.BoolVar(&printCaps, "print-capabilities", false, "Print capabilities")
 	flag.StringVar(&netNsPath, "netns", "", "path to network namespace")
 	flag.StringVar(&ifName, "interface", "tun0", "interface name within netns")
 	flag.Var(&remoteFwd, "R", "Connections to remote side forwarded local")
@@ -65,6 +67,17 @@ func Main() int {
 	// duplicated items in list, ensure parsing is done only once.
 	if flag.Parsed() == false {
 		flag.Parse()
+	}
+
+	if printCaps {
+		fmt.Println(`{
+  "type": "slirp-helper",
+  "features": [
+    "ipv4",
+    "ipv6"
+  ]
+}`)
+		return 0
 	}
 
 	if gomaxprocs > 0 {
