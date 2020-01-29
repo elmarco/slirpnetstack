@@ -17,6 +17,7 @@ import (
 )
 
 var (
+	fd             int
 	netNsPath      string
 	ifName         string
 	remoteFwd      FwdAddrSlice
@@ -28,6 +29,7 @@ var (
 )
 
 func init() {
+	flag.IntVar(&fd, "fd", -1, "Unix datagram socket file descriptor")
 	flag.StringVar(&netNsPath, "netns", "", "path to network namespace")
 	flag.StringVar(&ifName, "interface", "tun0", "interface name within netns")
 	flag.Var(&remoteFwd, "R", "Connections to remote side forwarded local")
