@@ -18,6 +18,7 @@ import (
 
 var (
 	fd             int
+	pcapFile       string
 	netNsPath      string
 	ifName         string
 	remoteFwd      FwdAddrSlice
@@ -30,6 +31,7 @@ var (
 
 func init() {
 	flag.IntVar(&fd, "fd", -1, "Unix datagram socket file descriptor")
+	flag.StringVar(&pcapFile, "pcap", "", "path to PCAP file")
 	flag.StringVar(&netNsPath, "netns", "", "path to network namespace")
 	flag.StringVar(&ifName, "interface", "tun0", "interface name within netns")
 	flag.Var(&remoteFwd, "R", "Connections to remote side forwarded local")
@@ -119,9 +121,29 @@ func Main() int {
 		}
 	}
 
-	tunFd, tapMode, tapMtu, err := GetTunTap(netNsPath, ifName)
-	if err != nil {
-		return -1
+	var (
+		err      error    = nil
+		pcapfile *os.File = nil
+		tunFd    int      = fd
+		tapMode  bool     = true
+		tapMtu   uint32   = 1500
+	)
+
+	if pcapFile != "" {
+		pcapfile, err = os.OpenFile(pcapFile, os.O_WRONLY|os.O_CREATE, 0644)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error opening file: %v", err)
+			return 1
+		}
+		defer pcapfile.Close()
+	}
+
+	if tunFd == -1 {
+		tunFd, tapMode, tapMtu, err = GetTunTap(netNsPath, ifName)
+		if err != nil {
+			log.Infof("erro1")
+			return -1
+		}
 	}
 
 	// With high mtu, low packet loss and low latency over tuntap,
@@ -131,7 +153,7 @@ func Main() int {
 
 	s := NewStack(bufSize, bufSize)
 
-	err = AddTunTap(s, 1, tunFd, tapMode, MustParseMAC("70:71:aa:4b:29:aa"), tapMtu)
+	err = AddTunTap(s, 1, tunFd, tapMode, MustParseMAC("70:71:aa:4b:29:aa"), tapMtu, pcapfile)
 	if err != nil {
 		return -1
 	}

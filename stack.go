@@ -12,6 +12,7 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/link/fdbased"
 	"gvisor.dev/gvisor/pkg/tcpip/link/rawfile"
+	"gvisor.dev/gvisor/pkg/tcpip/link/sniffer"
 	"gvisor.dev/gvisor/pkg/tcpip/link/tun"
 	"gvisor.dev/gvisor/pkg/tcpip/network/arp"
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
@@ -107,7 +108,7 @@ func NewStack(rcvBufferSize, sndBufferSize int) *stack.Stack {
 	return s
 }
 
-func AddTunTap(s *stack.Stack, nic tcpip.NICID, tunFd int, tapMode bool, macAddress net.HardwareAddr, tapMtu uint32) error {
+func AddTunTap(s *stack.Stack, nic tcpip.NICID, tunFd int, tapMode bool, macAddress net.HardwareAddr, tapMtu uint32, pcapFile *os.File) error {
 	parms := fdbased.Options{FDs: []int{tunFd},
 		MTU:               tapMtu,
 		RXChecksumOffload: true,
@@ -123,7 +124,11 @@ func AddTunTap(s *stack.Stack, nic tcpip.NICID, tunFd int, tapMode bool, macAddr
 		return err
 	}
 
-	if err := s.CreateNIC(nic, linkEP); err != nil {
+	ep := sniffer.New(linkEP)
+	if pcapFile != nil {
+		ep, err = sniffer.NewWithFile(ep, pcapFile, tapMtu)
+	}
+	if err := s.CreateNIC(nic, ep); err != nil {
 		fmt.Fprintf(os.Stderr, "[!] CreateNIC(%s) = %s\n", ifName, err)
 		return fmt.Errorf("%s", err)
 	}
