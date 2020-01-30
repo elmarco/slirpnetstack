@@ -102,6 +102,31 @@ func (c *KaUDPConn) Read(buf []byte) (int, error) {
 	}
 }
 
+func (c *KaUDPConn) ReadFrom(buf []byte) (int, net.Addr, error) {
+	var t time.Time
+
+	// IsZero means deadline is disabled. Good.
+	c.periodMu.RLock()
+	if c.keepAlive {
+		t = time.Now().Add(c.keepAlivePeriod)
+	}
+	c.periodMu.RUnlock()
+
+	// Zero is fine. Will cancel deadline.
+	c.Conn.SetReadDeadline(t)
+
+	pc := c.Conn.(net.PacketConn)
+	n, addr, err := pc.ReadFrom(buf)
+	if ne, ok := err.(net.Error); ok == true && ne.Timeout() {
+		// On Keepalive raise special error
+		return 0, nil, &UDPKeepAliveError{err}
+	} else {
+		// Otherwise (other error or deadline timeout) just pass
+		// direct to user.
+		return n, addr, err
+	}
+}
+
 func (c *KaUDPConn) Write(buf []byte) (int, error) {
 	// Here is the deal. The UDP conn doesn't have a notion of
 	// half-closed. Instead, let's keep both directions alive,
@@ -116,6 +141,27 @@ func (c *KaUDPConn) Write(buf []byte) (int, error) {
 	c.periodMu.RUnlock()
 
 	n, err := c.Conn.Write(buf)
+	if closeOnWrite {
+		c.Conn.Close()
+	}
+	return n, err
+}
+
+func (c *KaUDPConn) WriteTo(buf []byte, addr net.Addr) (int, error) {
+	// Here is the deal. The UDP conn doesn't have a notion of
+	// half-closed. Instead, let's keep both directions alive,
+	// even if only one of them is live. On Write, let's grant
+	// more time to reader.
+	c.periodMu.RLock()
+	if c.keepAlive {
+		t := time.Now().Add(c.keepAlivePeriod)
+		c.Conn.SetReadDeadline(t)
+	}
+	closeOnWrite := c.closeOnWrite
+	c.periodMu.RUnlock()
+
+	pc := c.Conn.(net.PacketConn)
+	n, err := pc.WriteTo(buf, addr)
 	if closeOnWrite {
 		c.Conn.Close()
 	}

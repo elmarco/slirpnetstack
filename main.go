@@ -11,7 +11,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/insomniacslk/dhcp/dhcpv4"
 	"gvisor.dev/gvisor/pkg/log"
+	"gvisor.dev/gvisor/pkg/tcpip"
+	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
+	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
 	"gvisor.dev/gvisor/pkg/tcpip/transport/tcp"
 	"gvisor.dev/gvisor/pkg/tcpip/transport/udp"
 )
@@ -80,6 +84,9 @@ func Main() int {
 		return 0
 	}
 
+	dnsconf := dnsReadConfig("/etc/resolv.conf")
+	log.Infof("%+v", dnsconf)
+
 	if gomaxprocs > 0 {
 		runtime.GOMAXPROCS(gomaxprocs)
 	}
@@ -99,7 +106,7 @@ func Main() int {
 	// https://idea.popcount.org/2019-12-06-addressing/
 	state.RoutingDeny = append(state.RoutingDeny,
 		MustParseCIDR("0.0.0.0/8"),
-		MustParseCIDR("10.0.0.0/8"),
+		//MustParseCIDR("10.0.0.0/8"),
 		MustParseCIDR("127.0.0.0/8"),
 		MustParseCIDR("169.254.0.0/16"),
 		MustParseCIDR("224.0.0.0/4"),
@@ -177,6 +184,16 @@ func Main() int {
 	StackRoutingSetup(s, 1, "2001:2::2/32")
 
 	doneChannel := make(chan bool)
+
+	// no IP, this will catch broadcasted packets
+	addr := tcpip.FullAddress{1, "", dhcpv4.ServerPort}
+	p, e := gonet.DialUDP(s, &addr, nil, ipv4.ProtocolNumber)
+	if e != nil {
+		fmt.Fprintf(os.Stderr, "Failed to bind on DHCP: %v", e)
+		return 1
+	}
+	conn := &KaUDPConn{Conn: p}
+	DHCP(conn, dnsconf.servers)
 
 	for _, lf := range localFwd {
 		var (

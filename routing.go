@@ -20,13 +20,16 @@ func UdpRoutingHandler(s *stack.Stack, state *State) func(*udp.ForwarderRequest)
 			Port: int(id.LocalPort),
 		}
 
+		fmt.Printf("routing UDP %+v\n", id)
 		rf, ok := state.remoteUdpFwd[loc.String()]
 		if ok == false && IPNetContains(state.RoutingDeny, loc.IP) {
 			// Firewall deny
+			fmt.Printf("IP deny\n")
 			return
 		}
 		if ok == false && IPNetContains(state.RoutingAllow, loc.IP) == false {
 			// Firewall !allow
+			fmt.Printf("IP !allow\n")
 			return
 		}
 
