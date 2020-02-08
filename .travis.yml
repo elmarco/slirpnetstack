@@ -1,0 +1,14 @@
+language: go
+go:
+- 1.13.x
+before_install:
+- go get -u github.com/mattn/goveralls
+- go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
+env:
+  global:
+    secure: 3u8nt3sk1fRzNA4FrLx4Lr3jiCdB0QqpZ8ABW6K4E+qCMWWTLkywi0lE3uUzWkdoDoLrbRnF0yuErFfNt7KE0q3N2dGTaSQAiRVo4+9YTAso/yXuDmVfBM6yA7TW4x/FQB6tQpSX/wm1pehZDyNqnphj13mokJXaNy2rdsSoleRWayscNfdbzPOl04otIqM7z48KPziH/joeIlZP5fIMYH1gHknsrNNtt87LK1yT7WZdVTOpai9PYlj9iu9rRHKpb+1LDVxFgft8p/a6JhATTLEryd9+EswR5Uwf3hji4E8Mb1cuRG+UD/syf2zv/lRTW/zQuafz1W0Fbbpq/e9G5tLxF/vcg+P6SbvhnzRr7ZmFyVZh0D1z4GizLGbTIgnhy5YBMTHWHSGNvx0ergELmibDHSSY2h+69kvbVBUVqBjChyeCu9GiTrvUP4ZNp0bPuDJZ2rmlHSF7tcSV/MD8W/5A8d9GrmMsFzb/Gw5vY8yeEMaHCIuWXkgtdd+TY4JdUQSSODDsoZR1en/iTtBumYp7wtrdgpXFCQxLDYilWhkJbpXZVH+I1j6jTj0n2e4JeB0UOAH3GahYnEemSAupbfzNAh5iMn9rEioQnRV+4Q1iTF4Of5CMt3FxzCo3cX57UuW83RZS531LVltJmHjseOA/CpA36s4iTFZ36B+NQbA=
+script:
+- export GO111MODULE=on
+- make
+- make cover
+- goveralls -coverprofile=.cover/all.merged -service=travis-ci
